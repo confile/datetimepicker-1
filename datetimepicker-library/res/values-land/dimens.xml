@@ -18,7 +18,7 @@
     <dimen name="dialog_height">200dip</dimen>
     <dimen name="left_side_width">250dip</dimen>
 
-    <dimen name="selected_date_year_size">30dp</dimen>
-    <dimen name="selected_date_day_size">100dp</dimen>
-    <dimen name="selected_date_month_size">30dp</dimen>
+    <dimen name="selected_date_year_size">24dp</dimen>
+    <dimen name="selected_date_day_size">88dp</dimen>
+    <dimen name="selected_date_month_size">24dp</dimen>
 </resources>
