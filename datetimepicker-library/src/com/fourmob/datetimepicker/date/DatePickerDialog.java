@@ -8,14 +8,19 @@ import android.os.SystemClock;
 import android.os.Vibrator;
 import android.support.v7.app.AppCompatDialog;
 import android.support.v7.app.AppCompatDialogFragment;
+import android.support.v7.widget.PopupMenu;
 import android.text.format.DateUtils;
+import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -37,6 +42,7 @@ public class DatePickerDialog extends AppCompatDialogFragment implements View.On
     private static final String KEY_SELECTED_MONTH = "month";
     private static final String KEY_SELECTED_DAY = "day";
     private static final String KEY_VIBRATE = "vibrate";
+    private static final String KEY_ALL_WEEK = "allweek";
 
     // https://code.google.com/p/android/issues/detail?id=13050
     private static final int MAX_YEAR = 2037;
@@ -85,6 +91,7 @@ public class DatePickerDialog extends AppCompatDialogFragment implements View.On
     private Vibrator mVibrator;
     private YearPickerView mYearPickerView;
     private TextView mYearView;
+    private boolean mAllWeekChecked;
 
     private boolean mVibrate = true;
     private boolean mCloseOnSingleTapDay;
@@ -104,13 +111,13 @@ public class DatePickerDialog extends AppCompatDialogFragment implements View.On
         // Empty constructor required for dialog fragment. DO NOT REMOVE
     }
 
-    public static DatePickerDialog newInstance(OnDateSetListener onDateSetListener, int year, int month, int day) {
-        return newInstance(onDateSetListener, year, month, day, true);
+    public static DatePickerDialog newInstance(OnDateSetListener onDateSetListener, int year, int month, int day, boolean isAllWeekChecked) {
+        return newInstance(onDateSetListener, year, month, day, true, isAllWeekChecked);
     }
 
-    public static DatePickerDialog newInstance(OnDateSetListener onDateSetListener, int year, int month, int day, boolean vibrate) {
+    public static DatePickerDialog newInstance(OnDateSetListener onDateSetListener, int year, int month, int day, boolean vibrate, boolean isAllWeekChecked) {
         DatePickerDialog datePickerDialog = new DatePickerDialog();
-        datePickerDialog.initialize(onDateSetListener, year, month, day, vibrate);
+        datePickerDialog.initialize(onDateSetListener, year, month, day, vibrate, isAllWeekChecked);
         return datePickerDialog;
     }
 
@@ -241,7 +248,7 @@ public class DatePickerDialog extends AppCompatDialogFragment implements View.On
         return new SimpleMonthAdapter.CalendarDay(mCalendar);
     }
 
-    public void initialize(OnDateSetListener onDateSetListener, int year, int month, int day, boolean vibrate) {
+    public void initialize(OnDateSetListener onDateSetListener, int year, int month, int day, boolean vibrate, boolean isAllWeekChecked) {
         if (year > MAX_YEAR)
             throw new IllegalArgumentException("year end must < " + MAX_YEAR);
         if (year < MIN_YEAR)
@@ -251,6 +258,7 @@ public class DatePickerDialog extends AppCompatDialogFragment implements View.On
         mCalendar.set(Calendar.MONTH, month);
         mCalendar.set(Calendar.DAY_OF_MONTH, day);
         mVibrate = vibrate;
+        mAllWeekChecked = isAllWeekChecked;
     }
 
     public void onClick(View view) {
@@ -271,6 +279,7 @@ public class DatePickerDialog extends AppCompatDialogFragment implements View.On
 			mCalendar.set(Calendar.MONTH, bundle.getInt(KEY_SELECTED_MONTH));
 			mCalendar.set(Calendar.DAY_OF_MONTH, bundle.getInt(KEY_SELECTED_DAY));
 			mVibrate = bundle.getBoolean(KEY_VIBRATE);
+            mAllWeekChecked = bundle.getBoolean(KEY_ALL_WEEK);
 		}
 	}
 
@@ -286,6 +295,26 @@ public class DatePickerDialog extends AppCompatDialogFragment implements View.On
         mSelectedDayTextView = ((TextView) view.findViewById(R.id.date_picker_day));
         mYearView = ((TextView) view.findViewById(R.id.date_picker_year));
         mYearView.setOnClickListener(this);
+
+        final ImageView options = (ImageView) view.findViewById(R.id.date_picker_options);
+
+        final PopupMenu popmenu = new PopupMenu(DatePickerDialog.this.getContext(), options, Gravity.RIGHT);
+        popmenu.getMenuInflater().inflate(R.menu.menu_datetimepicker, popmenu.getMenu());
+        popmenu.getMenu().findItem(R.id.menu_week).setChecked(mAllWeekChecked);
+        popmenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+            public boolean onMenuItemClick(MenuItem item) {
+                item.setChecked(!item.isChecked());
+                mAllWeekChecked = item.isChecked();
+                return true;
+            }
+        });
+
+        options.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                popmenu.show();
+            }
+        });
 
         int listPosition = -1;
         int currentView = MONTH_AND_DAY_VIEW;
@@ -355,7 +384,7 @@ public class DatePickerDialog extends AppCompatDialogFragment implements View.On
     private void onDoneButtonClick() {
         tryVibrate();
         if (mCallBack != null) {
-            mCallBack.onDateSet(this, mCalendar.get(Calendar.YEAR), mCalendar.get(Calendar.MONTH), mCalendar.get(Calendar.DAY_OF_MONTH));
+            mCallBack.onDateSet(this, mCalendar.get(Calendar.YEAR), mCalendar.get(Calendar.MONTH), mCalendar.get(Calendar.DAY_OF_MONTH), mAllWeekChecked);
         }
         dismiss();
     }
@@ -394,6 +423,7 @@ public class DatePickerDialog extends AppCompatDialogFragment implements View.On
         }
         bundle.putInt(KEY_LIST_POSITION, listPosition);
         bundle.putBoolean(KEY_VIBRATE, mVibrate);
+        bundle.putBoolean(KEY_ALL_WEEK, mAllWeekChecked);
     }
 
     public void onYearSelected(int year) {
@@ -460,7 +490,22 @@ public class DatePickerDialog extends AppCompatDialogFragment implements View.On
         public abstract void onDateChanged();
     }
 
+    /**
+     * The callback used to indicate the user is done filling in the date.
+     */
     public static abstract interface OnDateSetListener {
-        public abstract void onDateSet(DatePickerDialog datePickerDialog, int year, int month, int day);
+        /**
+         * @param datePickerDialog
+         *            The date picker dialog associated with this listener.
+         * @param year
+         *            The year that was set.
+         * @param month
+         *            The month that was set (0-11) for compatibility with {@link java.util.Calendar}.
+         * @param day
+         *            The day of the month that was set.
+         * @param isAllWeekChecked
+         *            True, if the check box "all week" was checked
+         */
+        public abstract void onDateSet(DatePickerDialog datePickerDialog, int year, int month, int day, boolean isAllWeekChecked);
     }
 }

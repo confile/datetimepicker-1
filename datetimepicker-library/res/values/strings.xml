@@ -29,4 +29,6 @@
     <string name="radial_numbers_typeface" translatable="false">sans-serif</string>
     <string name="select_hours">Select hours</string>
     <string name="select_minutes">Select minutes</string>
+
+    <string name="datepicker_all_week_checkbox">Entire week</string>
 </resources>
